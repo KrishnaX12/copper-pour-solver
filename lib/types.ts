@@ -82,6 +82,18 @@ export interface InputTracePad extends BaseInputPad {
   segments: Point[]
 }
 
+/** A single tapered wire segment in board-world mm (+X right, +Y up).
+ * Endpoints are positions; widths are perpendicular to the centerline.
+ */
+export interface InputTaperedTracePad extends BaseInputPad {
+  shape: "tapered_trace"
+  start: Point
+  end: Point
+  start_width: number
+  end_width: number
+  width_interpolation_mode: "linear" | "quadratic"
+}
+
 export interface InputPolygonPad extends BaseInputPad {
   shape: "polygon"
   points: Point[]
@@ -94,6 +106,7 @@ export type InputPad =
   | InputPillPad
   | InputOvalPad
   | InputTracePad
+  | InputTaperedTracePad
   | InputPolygonPad
 
 export interface InputProblem {

@@ -1,3 +1,4 @@
+import { taperedTraceToPolygon } from "./tapered-trace-to-polygon"
 import type { Point } from "@tscircuit/math-utils"
 import type {
   InputCircularPad,
@@ -225,6 +226,18 @@ export const processObstaclesForPour = (
       }
 
       polygonsToSubtract.push(...offsetPolygon(polygon, margin))
+      continue
+    }
+
+    if (pad.shape === "tapered_trace") {
+      const polygon = taperedTraceToPolygon(pad)
+      if (polygon.length >= 3) {
+        polygonsToSubtract.push(
+          ...(traceMargin > 0
+            ? offsetPolygon(polygon, traceMargin)
+            : [polygon]),
+        )
+      }
       continue
     }
 

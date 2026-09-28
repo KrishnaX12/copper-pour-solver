@@ -416,8 +416,45 @@ export const convertCircuitJsonToInputProblem = (
         currentWidth = null
       }
 
-      for (const r of trace.route) {
-        const ri = r as any
+      for (const [index, ri] of trace.route.entries()) {
+        const next = trace.route[index + 1]
+        if (
+          ri.route_type === "wire" &&
+          ri.layer === options.layer &&
+          ri.width_interpolation_mode &&
+          ri.start_width !== undefined &&
+          ri.end_width !== undefined &&
+          next
+        ) {
+          const end = next.route_type === "through_pad" ? next.start : next
+          const endLayer =
+            next.route_type === "via"
+              ? next.from_layer
+              : next.route_type === "through_pad"
+                ? next.start_layer
+                : next.layer
+          if (
+            endLayer === ri.layer &&
+            Math.hypot(end.x - ri.x, end.y - ri.y) > 0
+          ) {
+            // End the preceding constant-width run at this point, then emit
+            // the taper independently. Its endpoint begins the next run.
+            currentSegmentGroup.push({ x: ri.x, y: ri.y })
+            commitGroup()
+            pads.push({
+              shape: "tapered_trace",
+              padId: `${trace.pcb_trace_id}-${pads.length}`,
+              layer: options.layer,
+              connectivityKey,
+              start: { x: ri.x, y: ri.y },
+              end: { x: end.x, y: end.y },
+              start_width: ri.start_width,
+              end_width: ri.end_width,
+              width_interpolation_mode: ri.width_interpolation_mode,
+            })
+            continue
+          }
+        }
         const isWireOnLayer =
           ri.route_type === "wire" && ri.layer === options.layer
         if (isWireOnLayer) {

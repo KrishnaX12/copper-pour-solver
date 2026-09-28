@@ -29,6 +29,7 @@ interface PourOptions {
 export const runSolverAndRenderToSvg = (
   circuitJson: AnyCircuitElement[],
   pour_options: PourOptions | PourOptions[],
+  renderSvg = convertCircuitJsonToPcbSvg,
 ) => {
   const pourOptionsArray = Array.isArray(pour_options)
     ? pour_options
@@ -93,6 +94,6 @@ export const runSolverAndRenderToSvg = (
 
   const finalCircuitJson = [...circuitJson, ...allCopperPours]
 
-  const svg = convertCircuitJsonToPcbSvg(finalCircuitJson as any)
+  const svg = renderSvg(finalCircuitJson as any)
   return svg
 }
