@@ -7,7 +7,7 @@ import {
 } from "lib/index"
 import { runSolverAndRenderToSvg } from "./utils/run-solver-and-render-to-svg"
 
-test("GND pour does not clear a footprint pcbtrace connected to a VCC pad", async () => {
+test("GND pour clears a footprint pcbtrace connected to a VCC pad", async () => {
   const clearance = 0.3
   const footprintTraceRoute = [
     { route_type: "wire", x: 0, y: 0, width: 0.4, layer: "top" },
@@ -47,7 +47,7 @@ test("GND pour does not clear a footprint pcbtrace connected to a VCC pad", asyn
         anchorAlignment="center"
       />
       <pcbnotetext
-        text="GND POUR CLEARS PAD, NOT TRACE"
+        text="GND POUR CLEARS PAD AND TRACE"
         pcbY={-2}
         fontSize="0.4mm"
         anchorAlignment="center"
@@ -78,12 +78,20 @@ test("GND pour does not clear a footprint pcbtrace connected to a VCC pad", asyn
     trace_margin: clearance,
     board_edge_margin: 0.2,
   })
-  expect(inputProblem.pads.map((obstacle) => obstacle.padId)).toEqual([
-    pad.pcb_smtpad_id,
+  expect(inputProblem.pads.map((obstacle) => obstacle.shape)).toEqual([
+    "rect",
+    "trace",
   ])
   expect(inputProblem.pads[0]!.connectivityKey).not.toBe(
     inputProblem.regionsForPour[0]!.connectivityKey,
   )
+  const traceObstacle = inputProblem.pads[1]!
+  expect(traceObstacle.connectivityKey).not.toBe(
+    inputProblem.regionsForPour[0]!.connectivityKey,
+  )
+  if (traceObstacle.shape !== "trace") {
+    throw new Error("Expected footprint trace obstacle")
+  }
 
   const output = new CopperPourPipelineSolver(inputProblem).getOutput()
   expect(output.brep_shapes).toHaveLength(1)
@@ -92,17 +100,13 @@ test("GND pour does not clear a footprint pcbtrace connected to a VCC pad", asyn
   const ringRight = Math.max(
     ...clearanceRings[0]!.vertices.map((point) => point.x),
   )
-  expect(ringRight).toBeCloseTo(pad.x + pad.width / 2 + clearance)
   const traceRight = Math.max(
     ...trace.route
       .filter((point) => point.route_type === "wire")
       .map((point) => point.x),
   )
-  expect(traceRight).toBeGreaterThan(ringRight)
-  expect(traceRight).toBeLessThan(
-    Math.max(
-      ...output.brep_shapes[0]!.outer_ring.vertices.map((point) => point.x),
-    ),
+  expect(ringRight).toBeCloseTo(
+    traceRight + traceObstacle.width / 2 + clearance,
   )
 
   const svg = runSolverAndRenderToSvg(

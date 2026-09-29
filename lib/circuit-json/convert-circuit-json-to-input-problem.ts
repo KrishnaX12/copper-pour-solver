@@ -393,10 +393,9 @@ export const convertCircuitJsonToInputProblem = (
       } as InputCircularPad)
     } else if (elm.type === "pcb_trace") {
       const trace = elm as PcbTrace
-      const connectivityKey = getSubcircuitConnectivityKeyForId(
-        trace.pcb_trace_id,
-      )
-      if (!connectivityKey) continue
+      const connectivityKey =
+        getSubcircuitConnectivityKeyForId(trace.pcb_trace_id) ??
+        `unconnected-trace:${trace.pcb_trace_id}`
 
       let currentSegmentGroup: Point[] = []
       let currentWidth: number | null = null
