@@ -7,7 +7,7 @@ import {
 } from "lib/index"
 import { runSolverAndRenderToSvg } from "./utils/run-solver-and-render-to-svg"
 
-test("GND pour clears a footprint pcbtrace connected to a VCC pad", async () => {
+test("source-less footprint pcbtrace is cleared from GND and VCC pours", async () => {
   const clearance = 0.3
   const footprintTraceRoute = [
     { route_type: "wire", x: 0, y: 0, width: 0.4, layer: "top" },
@@ -63,12 +63,16 @@ test("GND pour clears a footprint pcbtrace connected to a VCC pad", async () => 
     (element): element is SourceNet =>
       element.type === "source_net" && element.name === "GND",
   )
+  const vccNet = circuitJson.find(
+    (element): element is SourceNet =>
+      element.type === "source_net" && element.name === "VCC",
+  )
 
   expect(pad?.shape).toBe("rect")
   expect(trace?.source_trace_id).toBeUndefined()
   expect(trace?.pcb_component_id).toBe(pad?.pcb_component_id)
-  if (pad?.shape !== "rect" || !trace || !gndNet) {
-    throw new Error("Expected a rectangular pad, footprint trace, and GND net")
+  if (pad?.shape !== "rect" || !trace || !gndNet || !vccNet) {
+    throw new Error("Expected a rectangular pad, footprint trace, and nets")
   }
 
   const inputProblem = convertCircuitJsonToInputProblem(circuitJson, {
@@ -78,20 +82,19 @@ test("GND pour clears a footprint pcbtrace connected to a VCC pad", async () => 
     trace_margin: clearance,
     board_edge_margin: 0.2,
   })
-  expect(inputProblem.pads.map((obstacle) => obstacle.shape)).toEqual([
-    "rect",
-    "trace",
-  ])
-  expect(inputProblem.pads[0]!.connectivityKey).not.toBe(
-    inputProblem.regionsForPour[0]!.connectivityKey,
+  const padObstacle = inputProblem.pads.find(
+    (obstacle) => obstacle.padId === pad.pcb_smtpad_id,
   )
-  const traceObstacle = inputProblem.pads[1]!
-  expect(traceObstacle.connectivityKey).not.toBe(
-    inputProblem.regionsForPour[0]!.connectivityKey,
+  const traceObstacle = inputProblem.pads.find(
+    (obstacle) => obstacle.shape === "trace",
   )
-  if (traceObstacle.shape !== "trace") {
-    throw new Error("Expected footprint trace obstacle")
+  const pourRegion = inputProblem.regionsForPour[0]
+  expect(inputProblem.pads).toHaveLength(2)
+  if (!padObstacle || traceObstacle?.shape !== "trace" || !pourRegion) {
+    throw new Error("Expected pad, footprint trace, and pour region")
   }
+  expect(padObstacle.connectivityKey).not.toBe(pourRegion.connectivityKey)
+  expect(traceObstacle.connectivityKey).not.toBe(pourRegion.connectivityKey)
 
   const output = new CopperPourPipelineSolver(inputProblem).getOutput()
   expect(output.brep_shapes).toHaveLength(1)
@@ -108,6 +111,29 @@ test("GND pour clears a footprint pcbtrace connected to a VCC pad", async () => 
   expect(ringRight).toBeCloseTo(
     traceRight + traceObstacle.width / 2 + clearance,
   )
+
+  const vccInputProblem = convertCircuitJsonToInputProblem(circuitJson, {
+    layer: "top",
+    source_net_id: vccNet.source_net_id,
+    pad_margin: clearance,
+    trace_margin: clearance,
+  })
+  const vccPad = vccInputProblem.pads.find(
+    (obstacle) => obstacle.padId === pad.pcb_smtpad_id,
+  )
+  const vccTrace = vccInputProblem.pads.find(
+    (obstacle) => obstacle.shape === "trace",
+  )
+  const vccRegion = vccInputProblem.regionsForPour[0]
+  if (!vccPad || !vccTrace || !vccRegion) {
+    throw new Error("Expected pad, footprint trace, and VCC pour region")
+  }
+  expect(vccPad.connectivityKey).toBe(vccRegion.connectivityKey)
+  expect(vccTrace.connectivityKey).not.toBe(vccRegion.connectivityKey)
+  expect(
+    new CopperPourPipelineSolver(vccInputProblem).getOutput().brep_shapes[0]
+      ?.inner_rings,
+  ).toHaveLength(1)
 
   const svg = runSolverAndRenderToSvg(
     circuitJson.filter((element) => element.type !== "pcb_copper_pour"),

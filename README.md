@@ -46,9 +46,6 @@ const { brep_shapes } = solver.getOutput()
 plated holes, mechanical holes, vias, traces, and cutouts for the selected layer.
 Pads and traces connected to the selected source net are kept connected to the
 pour; unrelated geometry is subtracted using the configured margins.
-Traces without resolvable connectivity are conservatively cleared using
-`trace_margin`, even if they physically touch a same-net pad. Give a footprint
-trace a `source_trace_id` when it should connect directly to the pour.
 When `use_thermal_reliefs` is true, plated holes and SMT pads on the pour net are
 isolated by the `pad_margin` air gap and reconnected by evenly spaced spokes.
 `thermal_relief_spoke_width` is required and `thermal_relief_spoke_count`
