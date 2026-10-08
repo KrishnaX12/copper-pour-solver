@@ -1,4 +1,3 @@
-import { taperedTraceToPolygon } from "./tapered-trace-to-polygon"
 import type { Point } from "@tscircuit/math-utils"
 import type {
   InputCircularPad,
@@ -21,6 +20,7 @@ import {
   segmentToPolygon,
 } from "./polygon-primitives"
 import { normalizeRing, type PolygonRing } from "./polygon-ring"
+import { taperedTraceToPolygon } from "./tapered-trace-to-polygon"
 
 interface ProcessedObstacles {
   polygonsToSubtract: PolygonRing[]
@@ -246,10 +246,11 @@ export const processObstaclesForPour = (
     }
 
     if (isTracePad(pad)) {
+      const margin = getMargin(traceMargin)
       // Add circles for each vertex
       for (const segment of pad.segments) {
         polygonsToSubtract.push(
-          circleToPolygon(segment, pad.width / 2 + traceMargin),
+          circleToPolygon(segment, pad.width / 2 + margin),
         )
       }
 
@@ -260,11 +261,7 @@ export const processObstaclesForPour = (
 
         if (!p1 || !p2) continue
 
-        const segmentPolygon = segmentToPolygon(
-          p1,
-          p2,
-          pad.width + traceMargin * 2,
-        )
+        const segmentPolygon = segmentToPolygon(p1, p2, pad.width + margin * 2)
         if (segmentPolygon.length > 0) {
           polygonsToSubtract.push(segmentPolygon)
         }

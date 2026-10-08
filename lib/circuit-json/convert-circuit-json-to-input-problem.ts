@@ -364,7 +364,16 @@ export const convertCircuitJsonToInputProblem = (
       const keepout = elm as PCBKeepout
       if (!keepout.layers.includes(options.layer)) continue
 
-      if (keepout.shape === "rect") {
+      if (keepout.shape === "outline") {
+        pads.push({
+          shape: "trace",
+          padId: keepout.pcb_keepout_id,
+          layer: options.layer,
+          connectivityKey: `keepout:${keepout.pcb_keepout_id}`,
+          segments: keepout.outline,
+          width: keepout.stroke_width,
+        })
+      } else if (keepout.shape === "rect") {
         pads.push({
           shape: "rect",
           padId: keepout.pcb_keepout_id,
