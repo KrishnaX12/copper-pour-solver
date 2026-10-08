@@ -22,18 +22,18 @@ test("repro: outline keepout is omitted from copper-pour obstacles", async () =>
       <pcbnotetext text="RECT CONTROL" pcbX={-4} pcbY={2} fontSize={0.5} />
       <pcbnotetext text="OUTLINE KEEPOUT" pcbX={4} pcbY={2} fontSize={0.5} />
       <pcbnotetext
-        text="Expected: no copper inside the yellow guide"
+        text="Expected: no copper inside the yellow boundary"
         pcbY={-3}
         fontSize={0.5}
       />
-      <pcbnotepath
-        route={[
-          { x: outline[0]!.x, y: -strokeWidth / 2 },
-          { x: outline[1]!.x, y: -strokeWidth / 2 },
-          { x: outline[1]!.x, y: strokeWidth / 2 },
-          { x: outline[0]!.x, y: strokeWidth / 2 },
-          { x: outline[0]!.x, y: -strokeWidth / 2 },
-        ]}
+      <pcbnoterect
+        pcbX={(outline[0]!.x + outline[1]!.x) / 2}
+        pcbY={(outline[0]!.y + outline[1]!.y) / 2}
+        width={outline[1]!.x - outline[0]!.x + strokeWidth}
+        height={strokeWidth}
+        cornerRadius={strokeWidth / 2}
+        isFilled={false}
+        hasStroke
         strokeWidth={0.05}
         color="#ffff00"
       />
