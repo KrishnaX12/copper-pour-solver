@@ -362,7 +362,12 @@ export const convertCircuitJsonToInputProblem = (
       }
     } else if (elm.type === "pcb_keepout") {
       const keepout = elm as PCBKeepout
-      if (!keepout.layers.includes(options.layer)) continue
+      if (
+        !keepout.layers.includes("all") &&
+        !keepout.layers.includes(options.layer)
+      ) {
+        continue
+      }
 
       if (keepout.shape === "outline") {
         pads.push({

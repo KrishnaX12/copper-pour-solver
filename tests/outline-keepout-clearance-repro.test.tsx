@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { Circuit } from "@tscircuit/core"
-import type { PCBKeepout, Point } from "circuit-json"
+import type { PCBKeepout, PcbBoard, Point } from "circuit-json"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import {
   CopperPourPipelineSolver,
@@ -22,18 +22,18 @@ test("outline keepout excludes copper on its layers", async () => {
       <pcbnotetext text="RECT CONTROL" pcbX={-4} pcbY={2} fontSize={0.5} />
       <pcbnotetext text="OUTLINE KEEPOUT" pcbX={4} pcbY={2} fontSize={0.5} />
       <pcbnotetext
-        text="Expected: no copper inside the yellow guide"
+        text="Expected: no copper inside the yellow boundary"
         pcbY={-3}
         fontSize={0.5}
       />
-      <pcbnotepath
-        route={[
-          { x: outline[0]!.x, y: -strokeWidth / 2 },
-          { x: outline[1]!.x, y: -strokeWidth / 2 },
-          { x: outline[1]!.x, y: strokeWidth / 2 },
-          { x: outline[0]!.x, y: strokeWidth / 2 },
-          { x: outline[0]!.x, y: -strokeWidth / 2 },
-        ]}
+      <pcbnoterect
+        pcbX={(outline[0]!.x + outline[1]!.x) / 2}
+        pcbY={(outline[0]!.y + outline[1]!.y) / 2}
+        width={outline[1]!.x - outline[0]!.x + strokeWidth}
+        height={strokeWidth}
+        cornerRadius={strokeWidth / 2}
+        isFilled={false}
+        hasStroke
         strokeWidth={0.05}
         color="#ffff00"
       />
@@ -104,6 +104,64 @@ test("outline keepout excludes copper on its layers", async () => {
       ),
   )
   await expect(svg).toMatchSvgSnapshot(import.meta.path)
+})
+
+test("all-layer keepouts exclude copper on every copper layer", () => {
+  const board: PcbBoard = {
+    type: "pcb_board",
+    pcb_board_id: "pcb_board_0",
+    center: { x: 0, y: 0 },
+    width: 20,
+    height: 10,
+    num_layers: 4,
+    thickness: 1.6,
+    material: "fr4",
+  }
+  const keepouts: PCBKeepout[] = [
+    {
+      type: "pcb_keepout",
+      pcb_keepout_id: "pcb_keepout_rect",
+      shape: "rect",
+      center: { x: -4, y: 0 },
+      width: 2,
+      height: 1,
+      layers: ["all"],
+    },
+    {
+      type: "pcb_keepout",
+      pcb_keepout_id: "pcb_keepout_circle",
+      shape: "circle",
+      center: { x: 0, y: 0 },
+      radius: 0.5,
+      layers: ["all"],
+    },
+    {
+      type: "pcb_keepout",
+      pcb_keepout_id: "pcb_keepout_outline",
+      shape: "outline",
+      outline: [
+        { x: 3, y: 0 },
+        { x: 5, y: 0 },
+      ],
+      stroke_width: 1,
+      layers: ["all"],
+    },
+  ]
+  for (const layer of ["top", "inner1", "inner2", "bottom"] as const) {
+    const input = convertCircuitJsonToInputProblem([board, ...keepouts], {
+      layer,
+      subcircuit_connectivity_map_key: "net_gnd",
+      pad_margin: 0.3,
+      trace_margin: 0.7,
+    })
+    expect(input.pads.map((pad) => pad.padId).sort()).toEqual(
+      keepouts.map((keepout) => keepout.pcb_keepout_id).sort(),
+    )
+    expect(input.pads.every((pad) => pad.layer === layer)).toBe(true)
+    const output = new CopperPourPipelineSolver(input).getOutput()
+    expect(output.brep_shapes).toHaveLength(1)
+    expect(output.brep_shapes[0]!.inner_rings).toHaveLength(keepouts.length)
+  }
 })
 
 for (const { name, outline, copperRegions } of [
