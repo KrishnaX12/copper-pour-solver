@@ -28,6 +28,7 @@
     "noPropertyAccessFromIndexSignature": false,
     "baseUrl": ".",
     "paths": {
+      "@tscircuit/copper-pour-solver": ["./lib/index.ts"],
       "lib": ["./lib"]
     }
   }
