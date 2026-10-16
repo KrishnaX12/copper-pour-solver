@@ -327,8 +327,22 @@ export const convertCircuitJsonToInputProblem = (
         radius: hole.hole_diameter / 2,
       } as InputCircularPad)
     } else if (elm.type === "pcb_cutout") {
-      const cutout = elm as any
+      const cutout = elm
       if (cutout.shape === "rect") {
+        if (cutout.rotation) {
+          pads.push({
+            shape: "rotated_rect",
+            padId: cutout.pcb_cutout_id,
+            layer: options.layer,
+            connectivityKey: `cutout:${cutout.pcb_cutout_id}`,
+            x: cutout.center.x,
+            y: cutout.center.y,
+            width: cutout.width,
+            height: cutout.height,
+            ccwRotation: cutout.rotation,
+          })
+          continue
+        }
         pads.push({
           shape: "rect",
           padId: cutout.pcb_cutout_id,

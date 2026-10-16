@@ -6,7 +6,7 @@ import {
 } from "lib/index"
 import { runSolverAndRenderToSvg } from "./utils/run-solver-and-render-to-svg"
 
-test("repro: rotated rectangular cutout receives axis-aligned copper clearance", async () => {
+test("rotated rectangular cutout clearance follows the opening", async () => {
   const cutoutMargin = 0.3
   const ccwRotationDegrees = 45
   const cutoutWidth = 4
@@ -57,21 +57,21 @@ test("repro: rotated rectangular cutout receives axis-aligned copper clearance",
     const input = convertCircuitJsonToInputProblem(circuitJson, {
       layer,
       source_net_name: "GND",
-      pad_margin: cutoutMargin,
-      trace_margin: cutoutMargin,
+      pad_margin: 0.7,
+      trace_margin: 0.7,
       cutout_margin: cutoutMargin,
     })
     expect(input.pads).toHaveLength(1)
     expect(input.pads[0]).toMatchObject({
-      shape: "rect",
+      shape: "rotated_rect",
       padId: cutout.pcb_cutout_id,
       layer,
-      bounds: {
-        minX: cutoutCenter.x - cutoutWidth / 2,
-        minY: cutoutCenter.y - cutoutHeight / 2,
-        maxX: cutoutCenter.x + cutoutWidth / 2,
-        maxY: cutoutCenter.y + cutoutHeight / 2,
-      },
+      x: cutoutCenter.x,
+      y: cutoutCenter.y,
+      width: cutoutWidth,
+      height: cutoutHeight,
+      ccwRotation: ccwRotationDegrees,
+      connectivityKey: `cutout:${cutout.pcb_cutout_id}`,
     })
     const output = new CopperPourPipelineSolver(input).getOutput()
     expect(output.brep_shapes).toHaveLength(1)
@@ -79,9 +79,12 @@ test("repro: rotated rectangular cutout receives axis-aligned copper clearance",
     const clearanceVertices = output.brep_shapes[0]!.inner_rings[0]!.vertices
     const clearanceTop = Math.max(...clearanceVertices.map((point) => point.y))
     expect(clearanceTop).toBeCloseTo(
-      cutoutCenter.y + cutoutHeight / 2 + cutoutMargin,
+      rotatedCutoutTop +
+        cutoutMargin *
+          (Math.sin(ccwRotationRadians) + Math.cos(ccwRotationRadians)),
+      4,
     )
-    expect(clearanceTop).toBeLessThan(rotatedCutoutTop)
+    expect(clearanceTop).toBeGreaterThan(rotatedCutoutTop)
   }
 
   await expect(
