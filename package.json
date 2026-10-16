@@ -21,7 +21,7 @@
     "@tscircuit/capacity-autorouter": "0.0.965",
     "@tscircuit/checks": "0.0.245",
     "@tscircuit/circuit-json-util": "0.0.119",
-    "@tscircuit/core": "0.0.2125",
+    "@tscircuit/core": "0.0.2167",
     "@tscircuit/footprinter": "0.0.431",
     "@tscircuit/infer-cable-insertion-point": "0.0.4",
     "@tscircuit/math-utils": "0.0.36",
