@@ -108,6 +108,16 @@ export const offsetCrossSection = (
   )
 }
 
+export const intersectCrossSections = (
+  pourSection: CrossSection,
+  boardSection: CrossSection,
+): CrossSection =>
+  runManifoldOperation(
+    "intersectCrossSections",
+    [...pourSection.toPolygons(), ...boardSection.toPolygons()],
+    () => pourSection.intersect(boardSection),
+  )
+
 export const subtractCrossSectionBlockers = (
   pourSection: CrossSection,
   blockerSections: CrossSection[],

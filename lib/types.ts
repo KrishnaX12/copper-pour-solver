@@ -10,6 +10,11 @@ export interface InputPourRegion {
    * apply board-edge clearance independently from a custom clipping outline.
    */
   boardEdgeOutline?: Point[]
+  /**
+   * Physical clipping boundary: board-world points in mm, +X right/+Y up,
+   * right-handed with +Z above. Does not replace the region margin outline.
+   */
+  boardOutline?: Point[]
   outline?: Point[]
   connectivityKey: string
   /** Use a 45-degree mesh; defaults to 0.25mm copper width and 1mm pitch. */

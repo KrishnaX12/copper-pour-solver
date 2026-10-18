@@ -1,15 +1,16 @@
 import { BasePipelineSolver } from "@tscircuit/solver-utils"
 import type { BRepShape } from "circuit-json"
 import type { InputProblem, PipelineOutput } from "lib/types"
-import { generateBRep } from "./copper-pour/generate-brep"
 import { applyCrosshatch } from "./copper-pour/apply-crosshatch"
+import { generateBRep } from "./copper-pour/generate-brep"
 import { getBoardPolygon } from "./copper-pour/get-board-polygon"
 import {
   crossSectionToCopperPourIslands,
+  intersectCrossSections,
   offsetCrossSection,
   removeTinyIslands,
-  subtractCrossSectionBlockers,
   subtractBlockersFromPour,
+  subtractCrossSectionBlockers,
 } from "./copper-pour/manifold-geometry-adapter"
 import { isManifoldGeometryInitialized } from "./copper-pour/manifold-runtime"
 import { processObstaclesForPour } from "./copper-pour/process-obstacles"
@@ -54,19 +55,21 @@ export class CopperPourPipelineSolver extends BasePipelineSolver<InputProblem> {
         (p) => p.layer === region.layer,
       )
 
+      const pourMargins = {
+        padMargin: region.padMargin,
+        traceMargin: region.traceMargin,
+        board_edge_margin: region.board_edge_margin,
+        cutoutMargin: region.cutout_margin,
+        use_thermal_reliefs: region.use_thermal_reliefs,
+        thermal_relief_spoke_width: region.thermal_relief_spoke_width,
+        thermal_relief_spoke_count: region.thermal_relief_spoke_count,
+      }
+      const marginOutline = region.boardEdgeOutline ?? region.outline
       const { polygonsToSubtract, obstaclePolygons } = processObstaclesForPour(
         padsForLayer,
         region.connectivityKey,
-        {
-          padMargin: region.padMargin,
-          traceMargin: region.traceMargin,
-          board_edge_margin: region.board_edge_margin,
-          cutoutMargin: region.cutout_margin,
-          use_thermal_reliefs: region.use_thermal_reliefs,
-          thermal_relief_spoke_width: region.thermal_relief_spoke_width,
-          thermal_relief_spoke_count: region.thermal_relief_spoke_count,
-        },
-        region.boardEdgeOutline ?? region.outline,
+        pourMargins,
+        marginOutline,
       )
 
       const pourMargin =
@@ -88,11 +91,20 @@ export class CopperPourPipelineSolver extends BasePipelineSolver<InputProblem> {
         boardPolygon,
         polygonsToSubtract,
       )
+      const boardOutline = region.boardOutline ?? region.boardEdgeOutline
+      const boardSection = boardOutline?.length
+        ? subtractBlockersFromPour(
+            boardOutline,
+            processObstaclesForPour([], undefined, pourMargins, boardOutline)
+              .polygonsToSubtract,
+          )
+        : undefined
+      const clippedPour = boardSection
+        ? intersectCrossSections(pourWithoutComponentObstacles, boardSection)
+        : pourWithoutComponentObstacles
+
       const solidPour = removeTinyIslands(
-        subtractCrossSectionBlockers(
-          pourWithoutComponentObstacles,
-          higherPriorityPourBlockers,
-        ),
+        subtractCrossSectionBlockers(clippedPour, higherPriorityPourBlockers),
       )
       const finalPour = region.crosshatch
         ? applyCrosshatch({

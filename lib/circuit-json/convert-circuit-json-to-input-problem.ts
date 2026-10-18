@@ -505,6 +505,15 @@ export const convertCircuitJsonToInputProblem = (
   }
 
   const { width, height, center } = pcb_board
+  const boardBounds =
+    width !== undefined && height !== undefined
+      ? {
+          minX: center.x - width / 2,
+          minY: center.y - height / 2,
+          maxX: center.x + width / 2,
+          maxY: center.y + height / 2,
+        }
+      : undefined
 
   // Use pour-specific outline if provided, otherwise fall back to board outline
   const outline = options.outline ?? pcb_board.outline
@@ -519,13 +528,28 @@ export const convertCircuitJsonToInputProblem = (
       maxX: Math.max(...xs),
       maxY: Math.max(...ys),
     }
+  } else if (boardBounds) {
+    bounds = boardBounds
   } else {
-    bounds = {
-      minX: center.x - width! / 2,
-      minY: center.y - height! / 2,
-      maxX: center.x + width! / 2,
-      maxY: center.y + height! / 2,
+    throw new Error(
+      "pcb_board requires width and height when no outline is provided",
+    )
+  }
+
+  let boardOutline = options.board_edge_outline
+  if (!boardOutline?.length) boardOutline = pcb_board.outline
+  if (!boardOutline?.length) {
+    if (!boardBounds) {
+      throw new Error(
+        "pcb_board requires width and height when no outline is provided",
+      )
     }
+    boardOutline = [
+      { x: boardBounds.minX, y: boardBounds.minY },
+      { x: boardBounds.maxX, y: boardBounds.minY },
+      { x: boardBounds.maxX, y: boardBounds.maxY },
+      { x: boardBounds.minX, y: boardBounds.maxY },
+    ]
   }
 
   const regionsForPour = [
@@ -534,6 +558,7 @@ export const convertCircuitJsonToInputProblem = (
       layer: options.layer,
       bounds,
       boardEdgeOutline: options.board_edge_outline,
+      boardOutline,
       outline,
       connectivityKey: pourConnectivityKey,
       crosshatch: options.crosshatch,
